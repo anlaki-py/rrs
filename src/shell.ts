@@ -19,9 +19,12 @@ export function shellCandidates(platform: NodeJS.Platform = process.platform): S
     return [{ file: "bash", args: ["--rcfile", BASH_RCFILE, "-i"] }];
   }
   if (platform === "win32") {
+    // The bundled ConPTY DLL avoids node-pty's external AttachConsole cleanup
+    // helper, which races with fast disconnects after the console has exited.
+    const windowsOptions: IWindowsPtyForkOptions = { useConpty: true, useConptyDll: true };
     return [
-      { file: "pwsh.exe", args: ["-NoLogo"], windowsOptions: { useConpty: true } },
-      { file: "powershell.exe", args: ["-NoLogo"], windowsOptions: { useConpty: true } },
+      { file: "pwsh.exe", args: ["-NoLogo"], windowsOptions },
+      { file: "powershell.exe", args: ["-NoLogo"], windowsOptions },
     ];
   }
   throw new Error(`unsupported operating system: ${platform}`);

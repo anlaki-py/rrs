@@ -12,8 +12,8 @@ test("selects interactive Bash with the packaged rcfile on Linux", () => {
 
 test("prefers PowerShell 7 and falls back to Windows PowerShell with ConPTY", () => {
   assert.deepEqual(shellCandidates("win32"), [
-    { file: "pwsh.exe", args: ["-NoLogo"], windowsOptions: { useConpty: true } },
-    { file: "powershell.exe", args: ["-NoLogo"], windowsOptions: { useConpty: true } },
+    { file: "pwsh.exe", args: ["-NoLogo"], windowsOptions: { useConpty: true, useConptyDll: true } },
+    { file: "powershell.exe", args: ["-NoLogo"], windowsOptions: { useConpty: true, useConptyDll: true } },
   ]);
 });
 
