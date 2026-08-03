@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchLatestRelease, npmExecutable, updateRrs } from "../../src/updater.js";
+import { fetchLatestRelease, npmInvocation, updateRrs } from "../../src/updater.js";
 
-test("selects the npm command for each platform", () => {
-  assert.equal(npmExecutable("linux"), "npm");
-  assert.equal(npmExecutable("win32"), "npm.cmd");
+test("selects a directly executable npm invocation for each platform", () => {
+  assert.deepEqual(npmInvocation("linux"), { command: "npm", argsPrefix: [] });
+  assert.deepEqual(npmInvocation("win32", "C:\\Windows\\System32\\cmd.exe"), {
+    command: "C:\\Windows\\System32\\cmd.exe",
+    argsPrefix: ["/d", "/s", "/c", "npm.cmd"],
+  });
 });
 
 function releaseResponse(tag = "v1.2.3", assets: unknown[] = [{ name: "rrs.tgz" }]): Response {

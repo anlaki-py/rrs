@@ -65,6 +65,16 @@ Start a server with a strong token:
 RRS_TOKEN='secret' rrs serve
 ```
 
+To expose it through a temporary Cloudflare Quick Tunnel, install `cloudflared`
+and add `--tunnel`:
+
+```sh
+npm install -g cloudflared
+RRS_TOKEN='secret' rrs serve --tunnel
+```
+
+RRS prints the generated address as a `wss://` URL ready for `rrs connect`.
+
 Connect from another interactive terminal:
 
 ```sh
@@ -114,6 +124,7 @@ rrs connect [options] <url>
 | `--host <address>` | `HOST` | `0.0.0.0` | Listener address |
 | `--port <number>` | `PORT` | `7860` | Listener port, from 1 through 65535 |
 | `--token <value>` | `RRS_TOKEN` | unset | Bearer token required for WebSocket upgrades |
+| `--tunnel` | none | false | Expose the server through a Cloudflare Quick Tunnel |
 
 CLI options take precedence over environment variables. When no token is set,
 the server prints a prominent warning: anyone who can reach it can open a shell.

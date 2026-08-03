@@ -43,20 +43,21 @@ test("top-level help, version, and unknown commands have stable exit behavior", 
 
 test("server options override environment values", () => {
   assert.deepEqual(
-    parseServeConfig(["--host", "127.0.0.1", "--port", "9000", "--token", "cli"], {
+    parseServeConfig(["--host", "127.0.0.1", "--port", "9000", "--token", "cli", "--tunnel"], {
       HOST: "env-host",
       PORT: "8000",
       RRS_TOKEN: "env",
     }),
-    { host: "127.0.0.1", port: 9000, token: "cli" },
+    { host: "127.0.0.1", port: 9000, token: "cli", tunnel: true },
   );
 });
 
 test("server configuration uses environment and defaults", () => {
-  assert.deepEqual(parseServeConfig([], {}), { host: "0.0.0.0", port: 7860 });
+  assert.deepEqual(parseServeConfig([], {}), { host: "0.0.0.0", port: 7860, tunnel: false });
   assert.deepEqual(parseServeConfig([], { HOST: "localhost", PORT: "1234" }), {
     host: "localhost",
     port: 1234,
+    tunnel: false,
   });
 });
 

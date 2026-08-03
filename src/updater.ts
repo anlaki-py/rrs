@@ -59,13 +59,23 @@ export async function fetchLatestRelease(fetchRelease: FetchRelease = fetch): Pr
   };
 }
 
-export function npmExecutable(platform: NodeJS.Platform = process.platform): string {
-  return platform === "win32" ? "npm.cmd" : "npm";
+export function npmInvocation(
+  platform: NodeJS.Platform = process.platform,
+  commandShell = process.env.ComSpec ?? "cmd.exe",
+): { command: string; argsPrefix: string[] } {
+  if (platform === "win32") {
+    return { command: commandShell, argsPrefix: ["/d", "/s", "/c", "npm.cmd"] };
+  }
+  return { command: "npm", argsPrefix: [] };
 }
 
 function installRelease(downloadUrl: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(npmExecutable(), ["install", "--global", downloadUrl], { stdio: "inherit" });
+    const invocation = npmInvocation();
+    const child = spawn(invocation.command, [...invocation.argsPrefix, "install", "--global", downloadUrl], {
+      stdio: "inherit",
+      windowsHide: true,
+    });
     child.once("error", (error) => reject(new Error(`unable to run npm: ${error.message}`)));
     child.once("exit", (code, signal) => {
       if (code === 0) {

@@ -30,6 +30,7 @@ Options:
   --host <address>      Listener address (HOST, default: 0.0.0.0)
   --port <number>       Listener port (PORT, default: 7860)
   --token <value>       WebSocket bearer token (RRS_TOKEN)
+  --tunnel              Expose the server through a Cloudflare Quick Tunnel
   -h, --help            Show this help
 `;
 
@@ -73,6 +74,7 @@ export function parseServeConfig(args: string[], env: Environment = process.env)
       host: { type: "string" },
       port: { type: "string" },
       token: { type: "string" },
+      tunnel: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -84,7 +86,7 @@ export function parseServeConfig(args: string[], env: Environment = process.env)
   const host = parsed.values.host ?? env.HOST ?? "0.0.0.0";
   const port = parsePort(parsed.values.port ?? env.PORT ?? "7860");
   const token = parsed.values.token ?? env.RRS_TOKEN;
-  return { host, port, ...(token !== undefined ? { token } : {}) };
+  return { host, port, tunnel: parsed.values.tunnel ?? false, ...(token !== undefined ? { token } : {}) };
 }
 
 export function parseClientConfig(args: string[], env: Environment = process.env): ClientConfig | "help" {

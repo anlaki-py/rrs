@@ -5,6 +5,7 @@ import type { IDisposable } from "node-pty";
 import WebSocket, { WebSocketServer } from "ws";
 import { MAX_MESSAGE_SIZE, parseResizeMessage } from "./protocol.js";
 import { releaseShell, spawnShell, terminateShell, type PtyWithRawData } from "./shell.js";
+import { startCloudflareTunnel, type RunningTunnel } from "./tunnel.js";
 
 const HIGH_WATER_MARK = 1024 * 1024;
 const LOW_WATER_MARK = 256 * 1024;
@@ -19,6 +20,7 @@ export interface ServerConfig {
   host: string;
   port: number;
   token?: string;
+  tunnel?: boolean;
 }
 
 export interface RunningServer {
@@ -216,13 +218,29 @@ export async function startServer(config: ServerConfig): Promise<RunningServer> 
 
 export async function runServer(config: ServerConfig): Promise<void> {
   const server = await startServer(config);
-  if (!config.token) {
-    console.error("rrs: WARNING: RRS_TOKEN is not set; anyone who can reach this server can open a shell");
+  let tunnel: RunningTunnel | undefined;
+  try {
+    if (config.tunnel) {
+      const localHost = config.host === "0.0.0.0" ? "127.0.0.1" : config.host === "::" ? "::1" : config.host;
+      const host = localHost.includes(":") ? `[${localHost}]` : localHost;
+      tunnel = await startCloudflareTunnel(`http://${host}:${server.port}`);
+    }
+    if (!config.token) {
+      console.error("rrs: WARNING: RRS_TOKEN is not set; anyone who can reach this server can open a shell");
+    }
+    console.log(`RRS listening on ${config.host}:${server.port}`);
+    if (tunnel) console.log(`RRS tunnel available at ${tunnel.url}`);
+    await new Promise<void>((resolve) => {
+      const stop = (): void => {
+        process.off("SIGINT", stop);
+        process.off("SIGTERM", stop);
+        resolve();
+      };
+      process.once("SIGINT", stop);
+      process.once("SIGTERM", stop);
+    });
+  } finally {
+    await tunnel?.close();
+    await server.close();
   }
-  console.log(`RRS listening on ${config.host}:${server.port}`);
-  await new Promise<void>((resolve, reject) => {
-    const stop = (): void => void server.close().then(resolve, reject);
-    process.once("SIGINT", stop);
-    process.once("SIGTERM", stop);
-  });
 }
