@@ -34,6 +34,22 @@ npm exec --yes \
   -- rrs connect wss://terminal.example.com
 ```
 
+Because `npx` caches package specifications, its mutable `latest` URL may reuse
+an older release. Use a versioned release URL when an exact version is required.
+
+## Update
+
+Update a global installation to the latest GitHub Release:
+
+```sh
+rrs update
+```
+
+The command checks GitHub for the latest version and passes its immutable,
+versioned tarball URL to `npm install --global`. It may require the same system
+permissions used for the original global installation. A temporary `npx` copy
+cannot replace its own cache; use a versioned URL or clear the npx cache instead.
+
 ## Quick start
 
 Start a server with a strong token:
@@ -56,6 +72,7 @@ output use binary WebSocket frames; resize events use JSON text messages.
 ```text
 rrs --help
 rrs --version
+rrs update
 rrs serve [options]
 rrs connect [options] <url>
 ```

@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { parseArgs, type ParseArgsConfig } from "node:util";
 import { runClient, type ClientConfig } from "./client.js";
 import { runServer, type ServerConfig } from "./server.js";
+import { updateRrs } from "./updater.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -11,10 +12,12 @@ const HELP = `RRS - Random Remote Shell
 Usage:
   rrs --help
   rrs --version
+  rrs update
   rrs serve [options]
   rrs connect [options] <url>
 
 Commands:
+  update                Install the latest GitHub Release globally
   serve                 Start the HTTP/WebSocket shell server
   connect <url>         Connect this terminal to an RRS server
 
@@ -125,6 +128,14 @@ export async function main(args = process.argv.slice(2), env: Environment = proc
     }
     if (command === "--version" || command === "-v") {
       process.stdout.write(`${version}\n`);
+      return 0;
+    }
+    if (command === "update") {
+      if (args.length !== 1) throw new Error("update does not accept arguments");
+      const result = await updateRrs(version);
+      process.stdout.write(
+        result.updated ? `RRS updated to ${result.version}\n` : `RRS ${result.version} is already up to date\n`,
+      );
       return 0;
     }
     if (command === "serve") {

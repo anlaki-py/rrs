@@ -26,6 +26,7 @@ async function captureWrite(
 test("top-level help, version, and unknown commands have stable exit behavior", async () => {
   const help = await captureWrite(process.stdout, () => main(["--help"], {}));
   assert.equal(help.code, 0);
+  assert.match(help.output, /rrs update/);
   assert.match(help.output, /rrs serve/);
 
   const release = await captureWrite(process.stdout, () => main(["--version"], {}));
@@ -34,6 +35,10 @@ test("top-level help, version, and unknown commands have stable exit behavior", 
   const unknown = await captureWrite(process.stderr, () => main(["unknown"], {}));
   assert.equal(unknown.code, 1);
   assert.match(unknown.output, /^rrs: unknown command/);
+
+  const invalidUpdate = await captureWrite(process.stderr, () => main(["update", "extra"], {}));
+  assert.equal(invalidUpdate.code, 1);
+  assert.match(invalidUpdate.output, /update does not accept arguments/);
 });
 
 test("server options override environment values", () => {
