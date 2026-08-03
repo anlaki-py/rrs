@@ -81,11 +81,15 @@ test("enforces bearer authentication on WebSocket upgrades", async () => {
   });
 });
 
-test("starts an interactive Bash PTY, handles resize, and kills it on disconnect", async () => {
+test("starts Bash with a visible prompt, handles resize, and kills it on disconnect", async () => {
   await withServer(undefined, async (server) => {
     const socket = await openSocket(`ws://127.0.0.1:${server.port}`);
     const [pid] = server.activePids;
     assert.ok(pid);
+
+    const promptOutput = waitForOutput(socket, /\x1b\[1;32m/);
+    socket.send(Buffer.from("\n"));
+    assert.match(await promptOutput, /\x1b\[1;32m/);
 
     const marker = `RRS_${Date.now()}`;
     const markerOutput = waitForOutput(socket, new RegExp(marker));

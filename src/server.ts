@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { fileURLToPath } from "node:url";
 import { spawn, type IDisposable, type IPty } from "node-pty";
 import WebSocket, { WebSocketServer } from "ws";
 import { MAX_MESSAGE_SIZE, parseResizeMessage } from "./protocol.js";
@@ -8,6 +9,7 @@ import { MAX_MESSAGE_SIZE, parseResizeMessage } from "./protocol.js";
 const HIGH_WATER_MARK = 1024 * 1024;
 const LOW_WATER_MARK = 256 * 1024;
 const HEARTBEAT_INTERVAL_MS = 20_000;
+const BASH_RCFILE = fileURLToPath(new URL("../bin/rrs.bashrc", import.meta.url));
 
 const HTML_PAGE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -64,7 +66,7 @@ type PtyWithRawData = Omit<IPty, "onData"> & {
 
 function spawnShell(): PtyWithRawData {
   const environment = { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" };
-  return spawn("bash", ["-i"], {
+  return spawn("bash", ["--rcfile", BASH_RCFILE, "-i"], {
     name: "xterm-256color",
     cols: 80,
     rows: 24,

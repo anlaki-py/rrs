@@ -32,7 +32,7 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const files = JSON.parse(fs.readFileSync('pack.json', 'utf8'))[0].files.map((entry) => entry.path);
-          for (const required of ['package.json', 'README.md', 'bin/rrs.js', 'dist/cli.js']) {
+          for (const required of ['package.json', 'README.md', 'bin/rrs.js', 'bin/rrs.bashrc', 'dist/cli.js']) {
             if (!files.includes(required)) throw new Error(`package is missing ${required}`);
           }
           const forbidden = files.filter((path) => path.startsWith('test/') || path.startsWith('.github/'));
