@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WebSocket PTY client for Termux.
+"""RRS (Random Remote Shell) client for Termux.
 
 TLS certificate verification is always disabled for wss:// connections.
 """
@@ -27,13 +27,13 @@ MAX_MESSAGE_SIZE = 1024 * 1024
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Connect this terminal to a remote PTY over WebSocket."
+        description="Connect this terminal to RRS over WebSocket."
     )
     parser.add_argument("url", help="ws:// or wss:// server URL")
     parser.add_argument(
         "--token",
-        default=os.environ.get("WSPTY_TOKEN"),
-        help="Bearer token; defaults to WSPTY_TOKEN",
+        default=os.environ.get("RRS_TOKEN"),
+        help="Bearer token; defaults to RRS_TOKEN",
     )
     return parser.parse_args()
 
@@ -74,7 +74,7 @@ async def run_client(args: argparse.Namespace) -> None:
     stdout_fd = sys.stdout.fileno()
 
     if not os.isatty(stdin_fd):
-        raise SystemExit("wspty requires an interactive terminal")
+        raise SystemExit("rrs requires an interactive terminal")
 
     headers = None
 
@@ -288,9 +288,9 @@ async def main() -> None:
         await run_client(args)
     except ConnectionClosed as exc:
         if exc.code not in (1000, 1001):
-            print(f"wspty: connection closed: {exc}", file=sys.stderr)
+            print(f"rrs: connection closed: {exc}", file=sys.stderr)
     except (OSError, TimeoutError) as exc:
-        raise SystemExit(f"wspty: {exc}") from exc
+        raise SystemExit(f"rrs: {exc}") from exc
 
 
 if __name__ == "__main__":

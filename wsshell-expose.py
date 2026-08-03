@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Low-latency WebSocket PTY server for Linux/Replit."""
+"""RRS (Random Remote Shell) server for Linux/Replit."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from websockets.exceptions import ConnectionClosed
 
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "7860"))
-TOKEN = os.environ.get("WSPTY_TOKEN")
+TOKEN = os.environ.get("RRS_TOKEN")
 
 READ_SIZE = 64 * 1024
 PTY_QUEUE_SIZE = 128
@@ -34,7 +34,7 @@ HTML_PAGE = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>WebSocket PTY</title>
+  <title>RRS - Random Remote Shell</title>
 
   <style>
     body {
@@ -56,9 +56,9 @@ HTML_PAGE = """<!doctype html>
 </head>
 
 <body>
-  <h1>WebSocket PTY</h1>
-  <p>Connect using the wspty client:</p>
-  <pre>python wspty wss://HOST</pre>
+  <h1>RRS - Random Remote Shell</h1>
+  <p>Connect using the RRS client:</p>
+  <pre>python3 wspty-connect.py wss://HOST</pre>
 </body>
 </html>
 """
@@ -447,7 +447,7 @@ def process_request(
 async def main() -> None:
     if not TOKEN:
         print(
-            "WARNING: WSPTY_TOKEN is not set; "
+            "WARNING: RRS_TOKEN is not set; "
             "anyone with the URL can open a shell.",
             flush=True,
         )
@@ -467,7 +467,7 @@ async def main() -> None:
         server_header=None,
     ) as server:
         print(
-            f"WebSocket PTY listening on {HOST}:{PORT}",
+            f"RRS listening on {HOST}:{PORT}",
             flush=True,
         )
 
