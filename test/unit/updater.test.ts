@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchLatestRelease, updateRrs } from "../../src/updater.js";
+import { fetchLatestRelease, npmExecutable, updateRrs } from "../../src/updater.js";
+
+test("selects the npm command for each platform", () => {
+  assert.equal(npmExecutable("linux"), "npm");
+  assert.equal(npmExecutable("win32"), "npm.cmd");
+});
 
 function releaseResponse(tag = "v1.2.3", assets: unknown[] = [{ name: "rrs.tgz" }]): Response {
   return Response.json({ tag_name: tag, assets });

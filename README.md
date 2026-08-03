@@ -4,15 +4,22 @@
 > shell server software. It grants remote access to the account that runs it.
 > Review and harden it before exposing it to an untrusted network.
 
-RRS provides an interactive Bash terminal over WebSockets as a native
-Node.js/TypeScript package for Linux.
+RRS provides an interactive platform shell over WebSockets as a native
+Node.js/TypeScript package for Linux and Windows.
 
 ## Install
 
-RRS requires Linux and Node.js 20 or newer. `node-pty` is a native dependency,
+RRS requires Node.js 20 or newer and one of these platforms:
+
+- Linux with Bash.
+- Windows 10 version 1809 or newer, Windows 11, or Windows Server 2019 or newer.
+
+Windows serving uses the ConPTY terminal API. `node-pty` is a native dependency,
 so npm may need a compiler toolchain if no compatible prebuilt binary is
-available. Runtime dependencies are downloaded from the npm registry even
-though RRS itself is distributed only through GitHub Releases.
+available. On Windows that means Python, Visual Studio Build Tools with the
+Desktop C++ workload, and a Windows SDK. Runtime dependencies are downloaded
+from the npm registry even though RRS itself is distributed only through GitHub
+Releases.
 
 Install the latest release globally:
 
@@ -64,8 +71,27 @@ Connect from another interactive terminal:
 rrs connect --token 'secret' ws://127.0.0.1:7860
 ```
 
-Each connection gets an independent interactive Bash PTY. Terminal input and
-output use binary WebSocket frames; resize events use JSON text messages.
+Each connection gets an independent interactive PTY. Linux serves Bash with the
+user's `~/.bashrc`. Windows prefers PowerShell 7 (`pwsh.exe`) and falls back to
+Windows PowerShell (`powershell.exe`). Terminal input and output use binary
+WebSocket frames; resize events use JSON text messages.
+
+### Windows PowerShell
+
+The same package can serve or connect from Windows Terminal or a PowerShell
+console:
+
+```powershell
+$env:RRS_TOKEN = 'secret'
+rrs serve
+```
+
+```powershell
+rrs connect --token 'secret' ws://127.0.0.1:7860
+```
+
+The npm global executable is exposed as `rrs` through npm's Windows command
+shim. PowerShell profiles load normally for server sessions.
 
 ## CLI
 
@@ -98,6 +124,13 @@ Examples:
 ```sh
 rrs serve --host 127.0.0.1 --port 9000 --token 'secret'
 HOST=127.0.0.1 PORT=9000 RRS_TOKEN='secret' rrs serve
+```
+
+```powershell
+$env:HOST = '127.0.0.1'
+$env:PORT = '9000'
+$env:RRS_TOKEN = 'secret'
+rrs serve
 ```
 
 ### Client options
@@ -143,7 +176,7 @@ WebSocket protocol errors, and closures after opening never trigger fallback.
 - Treat `RRS_TOKEN` as a password; do not place it in a URL or commit it.
 - The token is shared authentication, not user identity or authorization.
 - The shell inherits the server process's directory, environment, and account
-  permissions and loads the account's normal interactive Bash configuration.
+  permissions and loads the account's normal Bash or PowerShell configuration.
 - Use firewall rules, private networking, or a trusted reverse proxy in addition
   to the token.
 - RRS does not provide auditing, sandboxing, privilege separation, or abuse
@@ -160,8 +193,9 @@ npm pack
 ```
 
 Generated `dist/`, local tarballs, and `node_modules/` are not committed. Pull
-requests and pushes to `master` run CI on Node 20 and Node 24, including
-TypeScript checks, local PTY/TLS integration tests, and package inspection.
+requests and pushes to `master` run CI on Linux with Node 20 and Node 24 and on
+Windows with Node 24, including TypeScript checks, platform PTY/TLS integration
+tests, and package installation inspection.
 
 Every successful push to `master` creates or updates GitHub Release
 `v0.1.<run-number>`. Its asset is always named `rrs.tgz`; the package and CLI

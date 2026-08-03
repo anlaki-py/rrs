@@ -174,7 +174,7 @@ async function useInteractiveTerminal(socket: WebSocket): Promise<void> {
     process.stdin.resume();
     process.stdin.on("data", onInput);
     socket.on("message", onMessage);
-    process.on("SIGWINCH", sendResize);
+    process.stdout.on("resize", sendResize);
     process.once("SIGINT", stop);
     process.once("SIGTERM", stop);
     sendResize();
@@ -187,7 +187,7 @@ async function useInteractiveTerminal(socket: WebSocket): Promise<void> {
   } finally {
     process.stdin.off("data", onInput);
     process.stdin.off("end", stop);
-    process.off("SIGWINCH", sendResize);
+    process.stdout.off("resize", sendResize);
     process.off("SIGINT", stop);
     process.off("SIGTERM", stop);
     process.stdin.setRawMode(Boolean(wasRaw));

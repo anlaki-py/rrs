@@ -11,42 +11,42 @@ permissions:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 24]
+        include:
+          - os: ubuntu-latest
+            node: 20
+            smoke: false
+          - os: ubuntu-latest
+            node: 24
+            smoke: true
+          - os: windows-latest
+            node: 24
+            smoke: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+      - name: Run Linux tests
+        if: runner.os == 'Linux'
+        run: npm run test:linux
+      - name: Run Windows tests
+        if: runner.os == 'Windows'
+        run: npm run test:windows
       - run: npm run build
       - name: Inspect package contents
+        shell: bash
         run: |
           npm pack --dry-run --json --ignore-scripts > pack.json
-          node <<'NODE'
-          const fs = require('node:fs');
-          const files = JSON.parse(fs.readFileSync('pack.json', 'utf8'))[0].files.map((entry) => entry.path);
-          for (const required of [
-            'package.json',
-            'README.md',
-            'bin/rrs.js',
-            'bin/rrs.bashrc',
-            'dist/cli.js',
-            'dist/updater.js',
-          ]) {
-            if (!files.includes(required)) throw new Error(`package is missing ${required}`);
-          }
-          const forbidden = files.filter((path) => path.startsWith('test/') || path.startsWith('.github/'));
-          if (forbidden.length) throw new Error(`package contains repository-only files: ${forbidden.join(', ')}`);
-          NODE
-      - name: Smoke-test packed installation
-        if: matrix.node == 24
+          npm run check:package -- pack.json
+      - name: Smoke-test packed installation on Linux
+        if: matrix.smoke && runner.os == 'Linux'
         run: |
           mkdir release
           npm pack --pack-destination release
@@ -54,6 +54,20 @@ jobs:
           npm install --global --prefix "$RUNNER_TEMP/rrs-smoke" ./release/rrs.tgz
           "$RUNNER_TEMP/rrs-smoke/bin/rrs" --help
           test "$("$RUNNER_TEMP/rrs-smoke/bin/rrs" --version)" = "0.1.0"
+          npm exec --yes --package="./release/rrs.tgz" -- rrs --version
+      - name: Smoke-test packed installation on Windows
+        if: matrix.smoke && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release
+          npm pack --pack-destination release
+          $tarball = Get-ChildItem release/rrs-*.tgz
+          Move-Item $tarball.FullName release/rrs.tgz
+          $prefix = Join-Path $env:RUNNER_TEMP rrs-smoke
+          npm install --global --prefix $prefix ./release/rrs.tgz
+          $rrs = Join-Path $prefix rrs.cmd
+          & $rrs --help
+          if ((& $rrs --version) -ne "0.1.0") { throw "installed RRS version mismatch" }
           npm exec --yes --package="./release/rrs.tgz" -- rrs --version
 
   release:
@@ -63,10 +77,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -76,7 +90,7 @@ jobs:
           VERSION="0.1.${GITHUB_RUN_NUMBER}"
           npm version "$VERSION" --no-git-tag-version
           npm run typecheck
-          npm test
+          npm run test:linux
           mkdir release
           npm pack --pack-destination release
           mv release/rrs-*.tgz release/rrs.tgz

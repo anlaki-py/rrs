@@ -1,16 +1,15 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { spawn } from "node-pty";
 import { WebSocketServer } from "ws";
 
-interface ClientRun {
+export interface ClientRun {
   output: string;
   exitCode: number;
 }
 
-async function runTerminalClient(url: string, signalSelf: boolean): Promise<ClientRun> {
-  const fixture = new URL("../fixtures/run-terminal-client.ts", import.meta.url);
-  const child = spawn(process.execPath, ["--import", "tsx", fixture.pathname, url], {
+export async function runTerminalClient(url: string, signalSelf: boolean): Promise<ClientRun> {
+  const fixture = fileURLToPath(new URL("../fixtures/run-terminal-client.ts", import.meta.url));
+  const child = spawn(process.execPath, ["--import", "tsx", fixture, url], {
     name: "xterm-256color",
     cols: 80,
     rows: 24,
@@ -21,9 +20,9 @@ async function runTerminalClient(url: string, signalSelf: boolean): Promise<Clie
   return new Promise((resolve, reject) => {
     let output = "";
     const timeout = setTimeout(() => {
-      child.kill("SIGKILL");
+      child.kill();
       reject(new Error(`terminal client timed out: ${JSON.stringify(output)}`));
-    }, 5_000);
+    }, 15_000);
     child.onData((data) => {
       output += data;
     });
@@ -34,7 +33,7 @@ async function runTerminalClient(url: string, signalSelf: boolean): Promise<Clie
   });
 }
 
-async function withWebSocketServer(
+export async function withWebSocketServer(
   onConnection: Parameters<WebSocketServer["on"]>[1],
   action: (url: string) => Promise<void>,
 ): Promise<void> {
@@ -49,25 +48,3 @@ async function withWebSocketServer(
     await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   }
 }
-
-test("restores terminal mode after normal server closure", async () => {
-  await withWebSocketServer(
-    (socket) => socket.once("message", () => socket.close(1000)),
-    async (url) => {
-      const result = await runTerminalClient(url, false);
-      assert.equal(result.exitCode, 0, result.output);
-      assert.match(result.output, /TERMINAL_RESTORED/);
-    },
-  );
-});
-
-test("restores terminal mode on the SIGTERM shutdown path", async () => {
-  await withWebSocketServer(
-    () => {},
-    async (url) => {
-      const result = await runTerminalClient(url, true);
-      assert.equal(result.exitCode, 0, result.output);
-      assert.match(result.output, /TERMINAL_RESTORED/);
-    },
-  );
-});
