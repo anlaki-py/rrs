@@ -35,6 +35,8 @@ Options:
 
 const CONNECT_HELP = `Usage: rrs connect [options] <url>
 
+HTTP URLs are automatically converted to their WebSocket equivalent.
+
 Options:
   --token <value>       WebSocket bearer token (RRS_TOKEN)
   --insecure            Disable TLS verification on the first attempt

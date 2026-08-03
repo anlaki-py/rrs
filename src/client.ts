@@ -40,8 +40,10 @@ export function normalizeUrl(input: string): string {
   } catch {
     throw new Error(`invalid WebSocket URL: ${input}`);
   }
+  if (url.protocol === "http:") url.protocol = "ws:";
+  if (url.protocol === "https:") url.protocol = "wss:";
   if (url.protocol !== "ws:" && url.protocol !== "wss:") {
-    throw new Error("URL must use ws:// or wss://");
+    throw new Error("URL must use http://, https://, ws://, or wss://");
   }
   if (!url.hostname) throw new Error(`invalid WebSocket URL: ${input}`);
   return url.href;

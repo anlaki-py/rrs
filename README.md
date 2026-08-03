@@ -145,12 +145,14 @@ rrs serve
 | `--insecure` | none | false | Disable TLS verification immediately |
 | `--strict-tls` | none | false | Never retry with verification disabled |
 
-`--insecure` and `--strict-tls` cannot be combined. URLs must use `ws://` or
-`wss://`; a URL without a scheme is treated as `wss://`. The client requires an
-interactive stdin terminal so it can safely enter and restore raw mode.
+`--insecure` and `--strict-tls` cannot be combined. The client accepts `ws://`
+and `wss://` URLs, converts `http://` to `ws://` and `https://` to `wss://`, and
+treats a URL without a scheme as `wss://`. The client requires an interactive
+stdin terminal so it can safely enter and restore raw mode.
 
 ```sh
 rrs connect --token 'secret' ws://127.0.0.1:7860
+rrs connect https://terminal.example.com
 rrs connect --strict-tls wss://terminal.example.com
 rrs connect --insecure wss://self-signed.example.com
 ```

@@ -12,7 +12,9 @@ test("normalizes and validates WebSocket URLs", () => {
   assert.equal(normalizeUrl("example.com/path"), "wss://example.com/path");
   assert.equal(normalizeUrl("ws://127.0.0.1:7860"), "ws://127.0.0.1:7860/");
   assert.equal(normalizeUrl("wss://example.com"), "wss://example.com/");
-  assert.throws(() => normalizeUrl("https://example.com"), /ws:\/\/ or wss:\/\//);
+  assert.equal(normalizeUrl("http://example.com/socket?token=value"), "ws://example.com/socket?token=value");
+  assert.equal(normalizeUrl("https://example.com/socket?token=value"), "wss://example.com/socket?token=value");
+  assert.throws(() => normalizeUrl("ftp://example.com"), /http:\/\/.*wss:\/\//);
   assert.throws(() => normalizeUrl("wss://"), /invalid WebSocket URL/);
 });
 
