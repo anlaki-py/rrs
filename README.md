@@ -1,214 +1,175 @@
 # RRS - Random Remote Shell
 
-> **Personal experiment:** This is a small, random personal project, not
-> production-grade software. Expect rough edges, limited testing, and security
-> limitations. Use it at your own risk and do not deploy it as a production
-> shell service without reviewing and hardening the code yourself.
+> **Personal experiment:** RRS is a small personal project, not production-grade
+> shell server software. It grants remote access to the account that runs it.
+> Review and harden it before exposing it to an untrusted network.
 
-RRS (Random Remote Shell) provides a small remote terminal over WebSockets:
+RRS provides an interactive Bash terminal over WebSockets. The current CLI is a
+native Node.js/TypeScript package for Linux; the original Python scripts remain
+available as legacy clients.
 
-- `wsshell-expose.py` starts a Bash shell behind a WebSocket server.
-- `wspty-connect.py` connects an interactive terminal to that shell.
+## Install
 
-Each WebSocket connection gets its own PTY and Bash process. The server is
-intended for Linux-based environments, including Replit, and the client is
-designed for a local Unix-like terminal such as Termux.
+RRS requires Linux and Node.js 20 or newer. `node-pty` is a native dependency,
+so npm may need a compiler toolchain if no compatible prebuilt binary is
+available. Runtime dependencies are downloaded from the npm registry even
+though RRS itself is distributed only through GitHub Releases.
 
-## Requirements
-
-- Python 3.10 or newer
-- Linux or another platform that provides `pty`, `fcntl`, and `termios`
-- The `websockets` Python package
-- An interactive terminal for the client
-
-The server and client can run on different machines. Install the dependency
-wherever each script will run:
+Install the latest release globally:
 
 ```sh
-python3 -m pip install websockets
+npm install --global https://github.com/anlaki-py/rrs/releases/latest/download/rrs.tgz
 ```
 
-Using a virtual environment is recommended:
+Run it temporarily with `npx`:
 
 ```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install websockets
+npx --yes https://github.com/anlaki-py/rrs/releases/latest/download/rrs.tgz serve
 ```
 
-## Quick Start
-
-Start the server in one terminal:
+If npm cannot infer the package binary from that URL, use the explicit form:
 
 ```sh
-RRS_TOKEN='change-this-token' python3 wsshell-expose.py
+npm exec --yes \
+  --package=https://github.com/anlaki-py/rrs/releases/latest/download/rrs.tgz \
+  -- rrs connect wss://terminal.example.com
 ```
 
-The default listener is `0.0.0.0:7860`. In another terminal on the same
-machine, connect to it:
+## Quick start
+
+Start a server with a strong token:
 
 ```sh
-python3 wspty-connect.py \
-  --token 'change-this-token' \
-  ws://127.0.0.1:7860
+RRS_TOKEN='secret' rrs serve
 ```
 
-You should now have an interactive Bash prompt. Press `Ctrl-D` or close the
-client to disconnect. Press `Ctrl-C` in the server terminal to stop the
-server.
-
-Do not use the example token outside a local test. Generate a long random
-value for any exposed server, for example:
+Connect from another interactive terminal:
 
 ```sh
-export RRS_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-python3 wsshell-expose.py
+rrs connect --token 'secret' ws://127.0.0.1:7860
 ```
 
-## Server Usage
+Each connection gets an independent interactive Bash PTY. Terminal input and
+output use binary WebSocket frames; resize events use JSON text messages.
 
-Run the server directly:
-
-```sh
-python3 wsshell-expose.py
-```
-
-The server reads these environment variables:
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `HOST` | `0.0.0.0` | Address to bind to |
-| `PORT` | `7860` | TCP port to listen on |
-| `RRS_TOKEN` | unset | Shared bearer token for WebSocket connections |
-
-For example, bind to a local-only port:
-
-```sh
-HOST=127.0.0.1 PORT=9000 RRS_TOKEN='secret' python3 wsshell-expose.py
-```
-
-The server prints its listening address at startup. It also exposes:
-
-- `/healthz` returns `200 OK` and is suitable for a basic health check.
-- `/` returns a small HTML information page. It is not a browser terminal.
-- WebSocket connections create an interactive Bash PTY.
-
-When `RRS_TOKEN` is set, clients must send the matching HTTP header:
+## CLI
 
 ```text
-Authorization: Bearer <token>
+rrs --help
+rrs --version
+rrs serve [options]
+rrs connect [options] <url>
 ```
 
-When the variable is unset, the server prints a warning and anyone who can
-reach the WebSocket URL can open a shell. Always set a token before exposing
-the server to a network you do not fully trust.
+### Server options
 
-## Client Usage
+| Option | Environment | Default | Description |
+| --- | --- | --- | --- |
+| `--host <address>` | `HOST` | `0.0.0.0` | Listener address |
+| `--port <number>` | `PORT` | `7860` | Listener port, from 1 through 65535 |
+| `--token <value>` | `RRS_TOKEN` | unset | Bearer token required for WebSocket upgrades |
 
-Connect with an explicit WebSocket URL:
+CLI options take precedence over environment variables. When no token is set,
+the server prints a prominent warning: anyone who can reach it can open a shell.
+Normal HTTP requests remain public:
+
+- `GET /healthz` returns `OK`.
+- Other HTTP paths return a small informational page.
+- Bearer authentication applies only to WebSocket upgrades.
+
+Examples:
 
 ```sh
-python3 wspty-connect.py ws://HOST:PORT
+rrs serve --host 127.0.0.1 --port 9000 --token 'secret'
+HOST=127.0.0.1 PORT=9000 RRS_TOKEN='secret' rrs serve
 ```
 
-For an authenticated server, provide the token with either `--token`:
+### Client options
+
+| Option | Environment | Default | Description |
+| --- | --- | --- | --- |
+| `--token <value>` | `RRS_TOKEN` | unset | Bearer token sent during upgrade |
+| `--insecure` | none | false | Disable TLS verification immediately |
+| `--strict-tls` | none | false | Never retry with verification disabled |
+
+`--insecure` and `--strict-tls` cannot be combined. URLs must use `ws://` or
+`wss://`; a URL without a scheme is treated as `wss://`. The client requires an
+interactive stdin terminal so it can safely enter and restore raw mode.
 
 ```sh
-python3 wspty-connect.py \
-  --token "$RRS_TOKEN" \
-  ws://HOST:PORT
+rrs connect --token 'secret' ws://127.0.0.1:7860
+rrs connect --strict-tls wss://terminal.example.com
+rrs connect --insecure wss://self-signed.example.com
 ```
 
-or the `RRS_TOKEN` environment variable:
+For a remote `wss://` endpoint, place a TLS-capable reverse proxy, tunnel, or
+hosting platform in front of `rrs serve`, which listens with plain HTTP and
+WebSockets.
+
+## TLS verification and fallback
+
+The client verifies certificates and hostnames by default. If, and only if, the
+initial connection fails with a recognized TLS certificate verification error,
+it warns and retries once with verification disabled:
+
+```text
+rrs: TLS certificate verification failed; retrying without verification
+rrs: warning: the server identity is unverified and RRS_TOKEN may be exposed
+```
+
+The retry can connect to an impersonating server and expose the bearer token.
+Use `--strict-tls` to forbid fallback. Use `--insecure` only when you explicitly
+accept this risk. DNS failures, timeouts, refused connections, HTTP errors,
+WebSocket protocol errors, and closures after opening never trigger fallback.
+
+## Security notes
+
+- Treat `RRS_TOKEN` as a password; do not place it in a URL or commit it.
+- The token is shared authentication, not user identity or authorization.
+- The shell inherits the server process's directory, environment, and account
+  permissions and loads the account's normal interactive Bash configuration.
+- Use firewall rules, private networking, or a trusted reverse proxy in addition
+  to the token.
+- RRS does not provide auditing, sandboxing, privilege separation, or abuse
+  protection.
+
+## Development and releases
 
 ```sh
-RRS_TOKEN='secret' python3 wspty-connect.py ws://HOST:PORT
+npm ci
+npm run typecheck
+npm test
+npm run build
+npm pack
 ```
 
-The URL may use either `ws://` or `wss://`. A URL without a scheme is treated
-as `wss://`, so this is equivalent to `wss://example.com:443`:
+Generated `dist/`, local tarballs, `node_modules/`, and Python caches are not
+committed. Pull requests and pushes to `master` run CI on Node 20 and Node 24,
+including TypeScript checks, local PTY/TLS integration tests, package inspection,
+and legacy Python compilation.
 
-```sh
-python3 wspty-connect.py example.com:443
-```
+Every successful push to `master` creates or updates GitHub Release
+`v0.1.<run-number>`. Its asset is always named `rrs.tgz`; the package and CLI
+inside report the same generated version. RRS is not published to the npm
+registry.
 
-The client must be attached to an interactive terminal. Piped or redirected
-input is rejected because the client switches the terminal into raw mode and
-restores the original settings when it exits.
+## Legacy Python implementation
 
-View all client options with:
-
-```sh
-python3 wspty-connect.py --help
-```
-
-## Remote HTTPS/WSS Setup
-
-`wsshell-expose.py` serves plain WebSockets. It does not create or manage TLS
-certificates. For a remote `wss://` connection, put a TLS-capable reverse
-proxy, tunnel, or hosting platform in front of the server and forward the
-WebSocket upgrade to the server's `HOST:PORT`.
-
-A typical remote connection looks like:
-
-```sh
-python3 wspty-connect.py \
-  --token "$RRS_TOKEN" \
-  wss://terminal.example.com
-```
-
-### TLS warning
-
-The current client deliberately disables TLS certificate and hostname
-verification for every `wss://` connection. This makes self-signed
-certificates work, but it also allows man-in-the-middle attacks. Use `wss://`
-only with an endpoint you trust and a network where this limitation is
-acceptable. The client must be changed before it can enforce certificate
-validation.
-
-## Troubleshooting
-
-### `Connection refused`
-
-Confirm that the server is running, that the client is using the correct port,
-and that the listener is reachable through any firewall or proxy. Check the
-server locally with:
-
-```sh
-curl http://127.0.0.1:7860/healthz
-```
-
-### `401 Unauthorized`
-
-The server has `RRS_TOKEN` set, but the client token is missing or different.
-Pass the same value with `--token` or set `RRS_TOKEN` in the client
-environment.
-
-### The client says it requires an interactive terminal
-
-Run it directly from a terminal. Do not pipe input into it or run it as a
-background process without a TTY.
-
-### The shell closes immediately
-
-Check the server's stderr/stdout for PTY or Bash startup errors. The server
-requires Bash and a platform with PTY support.
-
-## Security Notes
-
-This tool grants shell access to the account running the server. Treat the
-token as a password and do not commit it to a repository or place it in a URL.
-Use network controls or a reverse proxy in addition to the shared token when
-the server is reachable from untrusted networks.
-
-The server loads the account's `~/.bashrc` before starting the interactive
-shell. This makes normal aliases and environment settings available, but also
-means the shell inherits the permissions and environment of the server
-process.
-
-## Project Files
+The original implementation remains available:
 
 | File | Purpose |
 | --- | --- |
 | `wsshell-expose.py` | WebSocket server and per-connection Bash PTY |
-| `wspty-connect.py` | Interactive WebSocket terminal client |
+| `wspty-connect.py` | Interactive terminal client |
+
+Install its dependency and run it directly:
+
+```sh
+python3 -m pip install websockets
+RRS_TOKEN='secret' python3 wsshell-expose.py
+python3 wspty-connect.py --token 'secret' ws://127.0.0.1:7860
+```
+
+The Python client disables certificate and hostname verification for every
+`wss://` connection. This insecure behavior is legacy-only; prefer the Node CLI.
+The Python scripts require Python 3.10+ and Unix PTY/terminal facilities.

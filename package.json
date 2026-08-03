@@ -1,0 +1,42 @@
+{
+  "name": "rrs",
+  "version": "0.1.0",
+  "description": "Random Remote Shell over WebSockets",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "linux"
+  ],
+  "bin": {
+    "rrs": "bin/rrs.js"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/**/*.test.ts",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0",
+    "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.23.5",
+    "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anlaki-py/rrs.git"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,97 @@
+name: CI and release
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Inspect package contents
+        run: |
+          npm pack --dry-run --json --ignore-scripts > pack.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = JSON.parse(fs.readFileSync('pack.json', 'utf8'))[0].files.map((entry) => entry.path);
+          for (const required of ['package.json', 'README.md', 'bin/rrs.js', 'dist/cli.js']) {
+            if (!files.includes(required)) throw new Error(`package is missing ${required}`);
+          }
+          const forbidden = files.filter((path) => path.startsWith('test/') || path.startsWith('.github/') || path.endsWith('.pyc'));
+          if (forbidden.length) throw new Error(`package contains repository-only files: ${forbidden.join(', ')}`);
+          NODE
+      - name: Compile legacy Python clients
+        run: python3 -m py_compile wsshell-expose.py wspty-connect.py
+      - name: Smoke-test packed installation
+        if: matrix.node == 24
+        run: |
+          mkdir release
+          npm pack --pack-destination release
+          mv release/rrs-*.tgz release/rrs.tgz
+          npm install --global --prefix "$RUNNER_TEMP/rrs-smoke" ./release/rrs.tgz
+          "$RUNNER_TEMP/rrs-smoke/bin/rrs" --help
+          test "$("$RUNNER_TEMP/rrs-smoke/bin/rrs" --version)" = "0.1.0"
+          npm exec --yes --package="./release/rrs.tgz" -- rrs --version
+
+  release:
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build release tarball
+        run: |
+          VERSION="0.1.${GITHUB_RUN_NUMBER}"
+          npm version "$VERSION" --no-git-tag-version
+          npm run typecheck
+          npm test
+          mkdir release
+          npm pack --pack-destination release
+          mv release/rrs-*.tgz release/rrs.tgz
+          npm install --global --prefix "$RUNNER_TEMP/rrs-smoke" ./release/rrs.tgz
+          test "$("$RUNNER_TEMP/rrs-smoke/bin/rrs" --version)" = "$VERSION"
+          "$RUNNER_TEMP/rrs-smoke/bin/rrs" --help
+          npm exec --yes --package="./release/rrs.tgz" -- rrs --version
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release/rrs.tgz --clobber
+            gh release edit "$TAG" --latest
+          else
+            gh release create "$TAG" release/rrs.tgz \
+              --target "$GITHUB_SHA" \
+              --title "$TAG" \
+              --generate-notes \
+              --latest
+          fi
