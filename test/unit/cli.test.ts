@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import test from "node:test";
 import { main, parseClientConfig, parseServeConfig } from "../../src/cli.js";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../../package.json") as { version: string };
 
 async function captureWrite(
   stream: NodeJS.WriteStream,
@@ -25,7 +29,7 @@ test("top-level help, version, and unknown commands have stable exit behavior", 
   assert.match(help.output, /rrs serve/);
 
   const release = await captureWrite(process.stdout, () => main(["--version"], {}));
-  assert.deepEqual(release, { code: 0, output: "0.1.0\n" });
+  assert.deepEqual(release, { code: 0, output: `${version}\n` });
 
   const unknown = await captureWrite(process.stderr, () => main(["unknown"], {}));
   assert.equal(unknown.code, 1);

@@ -4,9 +4,8 @@
 > shell server software. It grants remote access to the account that runs it.
 > Review and harden it before exposing it to an untrusted network.
 
-RRS provides an interactive Bash terminal over WebSockets. The current CLI is a
-native Node.js/TypeScript package for Linux; the original Python scripts remain
-available as legacy clients.
+RRS provides an interactive Bash terminal over WebSockets as a native
+Node.js/TypeScript package for Linux.
 
 ## Install
 
@@ -143,33 +142,10 @@ npm run build
 npm pack
 ```
 
-Generated `dist/`, local tarballs, `node_modules/`, and Python caches are not
-committed. Pull requests and pushes to `master` run CI on Node 20 and Node 24,
-including TypeScript checks, local PTY/TLS integration tests, package inspection,
-and legacy Python compilation.
+Generated `dist/`, local tarballs, and `node_modules/` are not committed. Pull
+requests and pushes to `master` run CI on Node 20 and Node 24, including
+TypeScript checks, local PTY/TLS integration tests, and package inspection.
 
 Every successful push to `master` creates or updates GitHub Release
 `v0.1.<run-number>`. Its asset is always named `rrs.tgz`; the package and CLI
-inside report the same generated version. RRS is not published to the npm
-registry.
-
-## Legacy Python implementation
-
-The original implementation remains available:
-
-| File | Purpose |
-| --- | --- |
-| `wsshell-expose.py` | WebSocket server and per-connection Bash PTY |
-| `wspty-connect.py` | Interactive terminal client |
-
-Install its dependency and run it directly:
-
-```sh
-python3 -m pip install websockets
-RRS_TOKEN='secret' python3 wsshell-expose.py
-python3 wspty-connect.py --token 'secret' ws://127.0.0.1:7860
-```
-
-The Python client disables certificate and hostname verification for every
-`wss://` connection. This insecure behavior is legacy-only; prefer the Node CLI.
-The Python scripts require Python 3.10+ and Unix PTY/terminal facilities.
+inside report the same generated version. RRS is not published to the npm registry.

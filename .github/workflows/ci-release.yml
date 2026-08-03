@@ -35,11 +35,9 @@ jobs:
           for (const required of ['package.json', 'README.md', 'bin/rrs.js', 'dist/cli.js']) {
             if (!files.includes(required)) throw new Error(`package is missing ${required}`);
           }
-          const forbidden = files.filter((path) => path.startsWith('test/') || path.startsWith('.github/') || path.endsWith('.pyc'));
+          const forbidden = files.filter((path) => path.startsWith('test/') || path.startsWith('.github/'));
           if (forbidden.length) throw new Error(`package contains repository-only files: ${forbidden.join(', ')}`);
           NODE
-      - name: Compile legacy Python clients
-        run: python3 -m py_compile wsshell-expose.py wspty-connect.py
       - name: Smoke-test packed installation
         if: matrix.node == 24
         run: |
