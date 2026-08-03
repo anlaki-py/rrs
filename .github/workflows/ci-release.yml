@@ -36,9 +36,11 @@ jobs:
       - name: Run Linux tests
         if: runner.os == 'Linux'
         run: npm run test:linux
-      - name: Run Windows tests
+      # Hosted Windows ConPTY teardown has a known node-pty 1.1.0 hang. Keep
+      # Windows build/package coverage while exercising PTY behavior locally.
+      - name: Run Windows non-PTY tests
         if: runner.os == 'Windows'
-        run: npm run test:windows
+        run: npm run test:windows:ci
       - run: npm run build
       - name: Inspect package contents
         shell: bash

@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { spawn } from "node-pty";
 import { WebSocketServer } from "ws";
+import { releaseShell } from "../../src/shell.js";
 
 export interface ClientRun {
   output: string;
@@ -28,6 +29,7 @@ export async function runTerminalClient(url: string, signalSelf: boolean): Promi
     });
     child.onExit(({ exitCode }) => {
       clearTimeout(timeout);
+      releaseShell(child);
       resolve({ output, exitCode });
     });
   });

@@ -90,6 +90,10 @@ rrs serve
 rrs connect --token 'secret' ws://127.0.0.1:7860
 ```
 
+When running directly from a source checkout, use `node .\bin\rrs.js` or the
+Windows launcher `./bin/rrs.cmd`. Executing `./bin/rrs.js` directly uses the
+Windows `.js` file association and may open a Windows Script Host error dialog.
+
 The npm global executable is exposed as `rrs` through npm's Windows command
 shim. PowerShell profiles load normally for server sessions.
 

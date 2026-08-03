@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import type { IDisposable } from "node-pty";
 import WebSocket, { WebSocketServer } from "ws";
 import { MAX_MESSAGE_SIZE, parseResizeMessage } from "./protocol.js";
-import { spawnShell, terminateShell, type PtyWithRawData } from "./shell.js";
+import { releaseShell, spawnShell, terminateShell, type PtyWithRawData } from "./shell.js";
 
 const HIGH_WATER_MARK = 1024 * 1024;
 const LOW_WATER_MARK = 256 * 1024;
@@ -73,7 +73,10 @@ class PtySession {
   ) {
     this.pid = pty.pid;
     this.dataSubscription = pty.onData((data) => this.sendPtyData(data));
-    this.exitSubscription = pty.onExit(() => this.close(false));
+    this.exitSubscription = pty.onExit(() => {
+      releaseShell(pty);
+      this.close(false);
+    });
     socket.on("message", (data, isBinary) => this.receiveMessage(data, isBinary));
     socket.once("close", () => this.close());
     socket.once("error", () => this.close());

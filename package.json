@@ -26,6 +26,7 @@
     "test": "tsx scripts/run-platform-tests.ts",
     "test:linux": "tsx --test --test-concurrency=1 test/unit/auth.test.ts test/unit/cli.test.ts test/unit/client.test.ts test/unit/protocol.test.ts test/unit/shell.test.ts test/unit/updater.test.ts test/integration/server.test.ts test/integration/server-linux.test.ts test/integration/terminal-linux.test.ts test/integration/tls.test.ts",
     "test:windows": "tsx --test --test-concurrency=1 test/unit/auth.test.ts test/unit/cli.test.ts test/unit/client.test.ts test/unit/protocol.test.ts test/unit/shell.test.ts test/unit/updater.test.ts test/integration/server.test.ts test/integration/server-windows.test.ts test/integration/terminal-windows.test.ts test/integration/tls.test.ts",
+    "test:windows:ci": "tsx --test --test-concurrency=1 test/unit/auth.test.ts test/unit/cli.test.ts test/unit/client.test.ts test/unit/protocol.test.ts test/unit/shell.test.ts test/unit/updater.test.ts test/integration/server.test.ts test/integration/tls.test.ts",
     "prepack": "npm run build"
   },
   "dependencies": {

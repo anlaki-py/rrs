@@ -14,6 +14,14 @@ export type PtyWithRawData = Omit<IPty, "onData"> & {
   readonly onData: (listener: (data: Buffer | string) => void) => IDisposable;
 };
 
+type ManagedPty = Pick<IPty, "pid" | "kill" | "onExit">;
+
+type WindowsPtyWithConoutWorker = ManagedPty & {
+  _agent?: {
+    _conoutSocketWorker?: IDisposable;
+  };
+};
+
 export function shellCandidates(platform: NodeJS.Platform = process.platform): ShellLaunch[] {
   if (platform === "linux") {
     return [{ file: "bash", args: ["--rcfile", BASH_RCFILE, "-i"] }];
@@ -60,7 +68,15 @@ export function spawnShell(platform: NodeJS.Platform = process.platform): PtyWit
   throw lastError;
 }
 
-export function terminateShell(pty: Pick<IPty, "pid" | "kill">, platform: NodeJS.Platform = process.platform): void {
+export function releaseShell(pty: ManagedPty, platform: NodeJS.Platform = process.platform): void {
+  if (platform !== "win32") return;
+
+  // node-pty 1.1.0 does not dispose this worker when a ConPTY child exits
+  // externally, which otherwise keeps the Node process alive indefinitely.
+  (pty as WindowsPtyWithConoutWorker)._agent?._conoutSocketWorker?.dispose();
+}
+
+export function terminateShell(pty: ManagedPty, platform: NodeJS.Platform = process.platform): void {
   if (platform !== "win32") {
     pty.kill();
     return;
@@ -68,6 +84,20 @@ export function terminateShell(pty: Pick<IPty, "pid" | "kill">, platform: NodeJS
 
   // node-pty's ConPTY kill path races an AttachConsole helper against process
   // teardown. taskkill terminates the process tree and lets ConPTY observe exit.
+  let released = false;
+  let exitSubscription: IDisposable | undefined;
+  let releaseTimeout: NodeJS.Timeout | undefined;
+  const release = (): void => {
+    if (released) return;
+    released = true;
+    if (releaseTimeout) clearTimeout(releaseTimeout);
+    exitSubscription?.dispose();
+    releaseShell(pty, platform);
+  };
+  exitSubscription = pty.onExit(release);
+  releaseTimeout = setTimeout(release, 5_000);
+  releaseTimeout.unref();
+
   const terminator = spawnProcess("taskkill.exe", ["/PID", String(pty.pid), "/T", "/F"], {
     stdio: "ignore",
     windowsHide: true,

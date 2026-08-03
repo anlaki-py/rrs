@@ -13,6 +13,7 @@ for (const required of [
   "package.json",
   "README.md",
   "bin/rrs.js",
+  "bin/rrs.cmd",
   "bin/rrs.bashrc",
   "dist/cli.js",
   "dist/shell.js",
