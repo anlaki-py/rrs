@@ -1,6 +1,6 @@
-import { spawnSync } from "node:child_process";
+import { spawn as spawnProcess, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { spawn, type IDisposable, type IPty, type IPtyForkOptions, type IWindowsPtyForkOptions } from "node-pty";
+import { spawn as spawnPty, type IDisposable, type IPty, type IPtyForkOptions, type IWindowsPtyForkOptions } from "node-pty";
 
 const BASH_RCFILE = fileURLToPath(new URL("../bin/rrs.bashrc", import.meta.url));
 
@@ -19,9 +19,7 @@ export function shellCandidates(platform: NodeJS.Platform = process.platform): S
     return [{ file: "bash", args: ["--rcfile", BASH_RCFILE, "-i"] }];
   }
   if (platform === "win32") {
-    // The bundled ConPTY DLL avoids node-pty's external AttachConsole cleanup
-    // helper, which races with fast disconnects after the console has exited.
-    const windowsOptions: IWindowsPtyForkOptions = { useConpty: true, useConptyDll: true };
+    const windowsOptions: IWindowsPtyForkOptions = { useConpty: true };
     return [
       { file: "pwsh.exe", args: ["-NoLogo"], windowsOptions },
       { file: "powershell.exe", args: ["-NoLogo"], windowsOptions },
@@ -50,7 +48,7 @@ export function spawnShell(platform: NodeJS.Platform = process.platform): PtyWit
       continue;
     }
     try {
-      return spawn(candidate.file, candidate.args, {
+      return spawnPty(candidate.file, candidate.args, {
         ...commonOptions,
         ...candidate.windowsOptions,
       }) as PtyWithRawData;
@@ -60,4 +58,25 @@ export function spawnShell(platform: NodeJS.Platform = process.platform): PtyWit
   }
 
   throw lastError;
+}
+
+export function terminateShell(pty: Pick<IPty, "pid" | "kill">, platform: NodeJS.Platform = process.platform): void {
+  if (platform !== "win32") {
+    pty.kill();
+    return;
+  }
+
+  // node-pty's ConPTY kill path races an AttachConsole helper against process
+  // teardown. taskkill terminates the process tree and lets ConPTY observe exit.
+  const terminator = spawnProcess("taskkill.exe", ["/PID", String(pty.pid), "/T", "/F"], {
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  terminator.once("error", () => {
+    try {
+      process.kill(pty.pid);
+    } catch {
+      // The shell may already have exited.
+    }
+  });
 }

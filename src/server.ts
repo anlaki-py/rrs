@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import type { IDisposable } from "node-pty";
 import WebSocket, { WebSocketServer } from "ws";
 import { MAX_MESSAGE_SIZE, parseResizeMessage } from "./protocol.js";
-import { spawnShell, type PtyWithRawData } from "./shell.js";
+import { spawnShell, terminateShell, type PtyWithRawData } from "./shell.js";
 
 const HIGH_WATER_MARK = 1024 * 1024;
 const LOW_WATER_MARK = 256 * 1024;
@@ -73,7 +73,7 @@ class PtySession {
   ) {
     this.pid = pty.pid;
     this.dataSubscription = pty.onData((data) => this.sendPtyData(data));
-    this.exitSubscription = pty.onExit(() => this.close());
+    this.exitSubscription = pty.onExit(() => this.close(false));
     socket.on("message", (data, isBinary) => this.receiveMessage(data, isBinary));
     socket.once("close", () => this.close());
     socket.once("error", () => this.close());
@@ -114,15 +114,17 @@ class PtySession {
     this.pty.write(Buffer.from(`${text}\n`, "utf8"));
   }
 
-  close(): void {
+  close(terminatePty = true): void {
     if (this.closed) return;
     this.closed = true;
     this.dataSubscription.dispose();
     this.exitSubscription.dispose();
-    try {
-      this.pty.kill();
-    } catch {
-      // The child may already have exited.
+    if (terminatePty) {
+      try {
+        terminateShell(this.pty);
+      } catch {
+        // The child may already have exited.
+      }
     }
     if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
       this.socket.close();
