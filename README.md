@@ -65,15 +65,15 @@ Start a server with a strong token:
 RRS_TOKEN='secret' rrs serve
 ```
 
-To expose it through a temporary Cloudflare Quick Tunnel, install `cloudflared`
-and add `--tunnel`:
+To expose it through a temporary Cloudflare Quick Tunnel, add `--tunnel`:
 
 ```sh
-npm install -g cloudflared
 RRS_TOKEN='secret' rrs serve --tunnel
 ```
 
-RRS prints the generated address as a `wss://` URL ready for `rrs connect`.
+RRS uses an installed `cloudflared` binary when available, or runs it temporarily
+through `npx` otherwise. It prints the generated address as a `wss://` URL ready
+for `rrs connect`.
 
 Connect from another interactive terminal:
 

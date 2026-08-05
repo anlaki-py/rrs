@@ -1,6 +1,8 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
-const CLOUDFLARE_URL_PATTERN = /https:\/\/[a-z\d-]+\.trycloudflare\.com\b/i;
+const CLOUDFLARE_URL_PATTERN = /https:\/\/[a-z\d-]+\.trycloudflare\.com(?=$|[\s"'<>|,}\]])/i;
 const TUNNEL_START_TIMEOUT_MS = 30_000;
 
 export interface RunningTunnel {
@@ -17,9 +19,27 @@ export function isCloudflaredAvailable(command = "cloudflared"): boolean {
   return result.status === 0;
 }
 
+export function resolveCloudflaredCommand(command = "cloudflared"): { command: string; args: string[] } {
+  return isCloudflaredAvailable(command)
+    ? { command, args: [] }
+    : { command: "npx", args: ["--yes", "cloudflared"] };
+}
+
 export function cloudflareWebSocketUrl(output: string): string | undefined {
   const url = output.match(CLOUDFLARE_URL_PATTERN)?.[0];
   return url?.replace(/^https:/i, "wss:");
+}
+
+export function cloudflaredEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+  fileExists: (path: string) => boolean = existsSync,
+): NodeJS.ProcessEnv {
+  if (environment.SSL_CERT_FILE || environment.SSL_CERT_DIR || !environment.TERMUX_VERSION || !environment.PREFIX) {
+    return environment;
+  }
+
+  const certificateFile = join(environment.PREFIX, "etc", "tls", "cert.pem");
+  return fileExists(certificateFile) ? { ...environment, SSL_CERT_FILE: certificateFile } : environment;
 }
 
 function stopProcess(child: ChildProcess): Promise<void> {
@@ -31,11 +51,9 @@ function stopProcess(child: ChildProcess): Promise<void> {
 }
 
 export function startCloudflareTunnel(localUrl: string, command = "cloudflared"): Promise<RunningTunnel> {
-  if (!isCloudflaredAvailable(command)) {
-    throw new Error("cloudflared is not available; install it with: npm install -g cloudflared");
-  }
-
-  const child = spawn(command, ["tunnel", "--url", localUrl], {
+  const cloudflared = resolveCloudflaredCommand(command);
+  const child = spawn(cloudflared.command, [...cloudflared.args, "tunnel", "--url", localUrl], {
+    env: cloudflaredEnvironment(),
     shell: process.platform === "win32",
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
