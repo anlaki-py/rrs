@@ -81,10 +81,12 @@ Connect from another interactive terminal:
 rrs connect --token 'secret' ws://127.0.0.1:7860
 ```
 
-Each connection gets an independent interactive PTY. Linux serves Bash with the
-user's `~/.bashrc`. Windows prefers PowerShell 7 (`pwsh.exe`) and falls back to
-Windows PowerShell (`powershell.exe`). Terminal input and output use binary
-WebSocket frames; resize events use JSON text messages.
+Each connection gets an independent interactive PTY. Linux serves the account's
+`$SHELL`, which loads its native interactive configuration (such as `~/.zshrc`
+or `~/.config/fish/config.fish`), and falls back to Bash with `~/.bashrc`.
+Windows prefers PowerShell 7 (`pwsh.exe`) and falls back to Windows PowerShell
+(`powershell.exe`). Terminal input and output use binary WebSocket frames;
+resize events use JSON text messages.
 
 ### Windows PowerShell
 
@@ -193,7 +195,7 @@ WebSocket protocol errors, and closures after opening never trigger fallback.
 - Treat `RRS_TOKEN` as a password; do not place it in a URL or commit it.
 - The token is shared authentication, not user identity or authorization.
 - The shell inherits the server process's directory, environment, and account
-  permissions and loads the account's normal Bash or PowerShell configuration.
+  permissions and loads the account's normal shell configuration.
 - Use firewall rules, private networking, or a trusted reverse proxy in addition
   to the token.
 - RRS does not provide auditing, sandboxing, privilege separation, or abuse

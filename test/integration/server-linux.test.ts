@@ -2,15 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { openSocket, waitForOutput, waitForProcessExit, withServer } from "../support/server.js";
 
-test("serves an interactive Bash PTY with prompt and resize support", async () => {
+test("serves an interactive Linux shell PTY with command and resize support", async () => {
   await withServer(undefined, async (server) => {
     const socket = await openSocket(`ws://127.0.0.1:${server.port}`);
     const [pid] = server.activePids;
     assert.ok(pid);
-
-    const promptOutput = waitForOutput(socket, /\x1b\[1;32m/);
-    socket.send(Buffer.from("\n"));
-    assert.match(await promptOutput, /\x1b\[1;32m/);
 
     const marker = `RRS_${Date.now()}`;
     const markerOutput = waitForOutput(socket, new RegExp(marker));

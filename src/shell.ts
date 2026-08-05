@@ -1,4 +1,5 @@
 import { spawn as spawnProcess, spawnSync } from "node:child_process";
+import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn as spawnPty, type IDisposable, type IPty, type IPtyForkOptions, type IWindowsPtyForkOptions } from "node-pty";
 
@@ -22,9 +23,15 @@ type WindowsPtyWithConoutWorker = ManagedPty & {
   };
 };
 
-export function shellCandidates(platform: NodeJS.Platform = process.platform): ShellLaunch[] {
+export function shellCandidates(
+  platform: NodeJS.Platform = process.platform,
+  configuredShell: string | undefined = process.env.SHELL,
+): ShellLaunch[] {
   if (platform === "linux") {
-    return [{ file: "bash", args: ["--rcfile", BASH_RCFILE, "-i"] }];
+    const bash = { file: "bash", args: ["--rcfile", BASH_RCFILE, "-i"] };
+    if (!configuredShell || basename(configuredShell) === "bash") return [bash];
+
+    return [{ file: configuredShell, args: ["-i"] }, bash];
   }
   if (platform === "win32") {
     const windowsOptions: IWindowsPtyForkOptions = { useConpty: true };
