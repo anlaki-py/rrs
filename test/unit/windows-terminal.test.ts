@@ -47,5 +47,5 @@ test("gracefully degrades when Windows console APIs are unavailable", () => {
   const restore = enableWindowsVirtualTerminalInput("win32", () => {
     throw new Error("no native module");
   });
-  assert.doesNotThrow(restore);
+  assert.equal(restore, undefined);
 });

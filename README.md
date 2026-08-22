@@ -21,6 +21,9 @@ Desktop C++ workload, and a Windows SDK. Runtime dependencies are downloaded
 from the npm registry even though RRS itself is distributed only through GitHub
 Releases.
 
+Windows clients use `koffi` to enable terminal mouse input. RRS prints a warning
+when the Windows console API or native binding is unavailable.
+
 Install the latest release globally:
 
 ```sh

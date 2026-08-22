@@ -175,6 +175,9 @@ async function useInteractiveTerminal(socket: WebSocket): Promise<void> {
   process.stdin.setRawMode(true);
   // Must run after setRawMode: libuv otherwise overwrites this Windows flag.
   const restoreWindowsTerminal = enableWindowsVirtualTerminalInput();
+  if (process.platform === "win32" && !restoreWindowsTerminal) {
+    console.error("rrs: warning: unable to enable Windows terminal mouse input");
+  }
   try {
     process.stdin.resume();
     process.stdin.on("data", onInput);
@@ -195,7 +198,7 @@ async function useInteractiveTerminal(socket: WebSocket): Promise<void> {
     process.stdout.off("resize", sendResize);
     process.off("SIGINT", stop);
     process.off("SIGTERM", stop);
-    restoreWindowsTerminal();
+    restoreWindowsTerminal?.();
     process.stdin.setRawMode(Boolean(wasRaw));
     if (!wasRaw) process.stdin.pause();
     if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.terminate();

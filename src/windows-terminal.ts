@@ -25,7 +25,7 @@ const loadKoffi: LoadKoffi = () => cjsRequire("koffi") as KoffiModule;
 export function enableWindowsVirtualTerminalInput(
   platform: NodeJS.Platform = process.platform,
   load: LoadKoffi = loadKoffi,
-): () => void {
+): (() => void) | undefined {
   if (platform !== "win32") return () => {};
 
   try {
@@ -36,16 +36,15 @@ export function enableWindowsVirtualTerminalInput(
     const handle = getStdHandle(STD_INPUT_HANDLE);
     const mode = new Uint32Array(1);
 
-    if (!getConsoleMode(handle, mode)) return () => {};
+    if (!getConsoleMode(handle, mode)) return undefined;
     const originalMode = mode[0]!;
     const virtualTerminalMode = originalMode | ENABLE_VIRTUAL_TERMINAL_INPUT;
-    if (virtualTerminalMode !== originalMode && !setConsoleMode(handle, virtualTerminalMode)) return () => {};
+    if (virtualTerminalMode !== originalMode && !setConsoleMode(handle, virtualTerminalMode)) return undefined;
 
     return () => {
       if (virtualTerminalMode !== originalMode) setConsoleMode(handle, originalMode);
     };
   } catch {
-    // Some third-party terminal hosts do not expose a Windows console handle.
-    return () => {};
+    return undefined;
   }
 }
