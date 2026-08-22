@@ -2,6 +2,7 @@ import type { IncomingMessage } from "node:http";
 import process from "node:process";
 import WebSocket from "ws";
 import { encodeResizeMessage, MAX_MESSAGE_SIZE } from "./protocol.js";
+import { enableWindowsVirtualTerminalInput } from "./windows-terminal.js";
 
 const HIGH_WATER_MARK = 1024 * 1024;
 const LOW_WATER_MARK = 256 * 1024;
@@ -172,6 +173,8 @@ async function useInteractiveTerminal(socket: WebSocket): Promise<void> {
   const stop = (): void => socket.close(1000);
 
   process.stdin.setRawMode(true);
+  // Must run after setRawMode: libuv otherwise overwrites this Windows flag.
+  const restoreWindowsTerminal = enableWindowsVirtualTerminalInput();
   try {
     process.stdin.resume();
     process.stdin.on("data", onInput);
@@ -192,6 +195,7 @@ async function useInteractiveTerminal(socket: WebSocket): Promise<void> {
     process.stdout.off("resize", sendResize);
     process.off("SIGINT", stop);
     process.off("SIGTERM", stop);
+    restoreWindowsTerminal();
     process.stdin.setRawMode(Boolean(wasRaw));
     if (!wasRaw) process.stdin.pause();
     if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.terminate();
